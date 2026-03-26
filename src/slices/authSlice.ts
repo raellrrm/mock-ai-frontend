@@ -12,10 +12,20 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+const getUserFromStorage = (): User | null => {
+  if (typeof window !== 'undefined') {
+    const storedUser = localStorage.getItem('@mockai:user');
+    if (storedUser) return JSON.parse(storedUser);
+  }
+  return null;
+};
+
+const initialUser = getUserFromStorage();
+
 const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
+  user: initialUser,
+  isAuthenticated: !!initialUser,
+  isLoading: false,
 };
 
 export const authSlice = createSlice({
@@ -26,12 +36,18 @@ export const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
       state.isLoading = false;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('@mockai:user', JSON.stringify(action.payload));
+      }
     },
 
     logoutSuccess: (state) => {
       state.user = null;
       state.isAuthenticated = false;
       state.isLoading = false;
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('@mockai:user');
+      }
     },
 
     setLoading: (state, action: PayloadAction<boolean>) => {

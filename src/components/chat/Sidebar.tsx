@@ -1,11 +1,12 @@
 "use client";
 import { authService } from '@/services/auth.service';
 import { logoutSuccess } from '@/slices/authSlice';
+import { RootState } from '@/store/store';
 import axios from 'axios';
 import { Bot, MessageSquare, Plus, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 const recentSessions = [
     { title: 'Senior Java Developer Interview', time: 'Hoje, 14:30', active: true },
@@ -20,6 +21,8 @@ export default function Sidebar() {
     const dispatch = useDispatch();
     const router = useRouter();
 
+    const { user } = useSelector((state: RootState) => state.auth)
+
     const handleLogout = async () => {
         try {
             await authService.logout();
@@ -30,6 +33,13 @@ export default function Sidebar() {
             router.push('/login');
         }
     }
+
+    const getInitials = (name?: string) => {
+        if (!name) return 'U'; // 'U' de Usuário como fallback
+        const names = name.trim().split(' ');
+        if (names.length === 1) return names[0].charAt(0).toUpperCase();
+        return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+    };
 
     return (
         <aside className="flex h-full w-72 flex-col border-r border-slate-900 bg-slate-950 p-4 text-white">
@@ -61,13 +71,26 @@ export default function Sidebar() {
 
             <div className="border-t border-slate-900 pt-4 mt-auto">
                 <div className="flex items-center gap-3 rounded-xl bg-slate-900/50 p-3 border border-slate-900">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 font-semibold text-indigo-300 border border-slate-700">JD</div>
-                    <div className="flex flex-1 flex-col overflow-hidden">
-                        <span className="truncate text-sm font-semibold">João da Silva</span>
-                        <span className="truncate text-xs text-slate-500">joao@email.com</span>
+                    
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 font-semibold text-indigo-300 border border-slate-700">
+                        {getInitials(user?.name)}
                     </div>
-                    <button className="text-slate-600 hover:text-white"><Settings className="h-4 w-4" /></button>
-                    <button onClick={handleLogout} className="text-slate-600 cursor-pointer hover:text-red-400"><LogOut className="h-4 w-4" /></button>
+                    
+                    <div className="flex flex-1 flex-col overflow-hidden">
+                        <span className="truncate text-sm font-bold">
+                            {user?.name || 'Carregando...'}
+                        </span>
+                        <span className="truncate text-xs text-slate-500">
+                            {user?.email || ''}
+                        </span>
+                    </div>
+
+                    <button className="text-slate-600 hover:text-white">
+                        <Settings className="h-4 w-4" />
+                    </button>
+                    <button onClick={handleLogout} className="text-slate-600 cursor-pointer hover:text-red-400">
+                        <LogOut className="h-4 w-4" />
+                    </button>
                 </div>
             </div>
         </aside>
