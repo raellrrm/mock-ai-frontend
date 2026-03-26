@@ -39,6 +39,7 @@ export default function LoginPage() {
             dispatch(setCredentials(user));
 
             router.push('/chat');
+            router.refresh();
 
         } catch (error) {
             if (axios.isAxiosError(error) && error.response) {

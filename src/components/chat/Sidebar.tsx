@@ -1,5 +1,11 @@
 "use client";
+import { authService } from '@/services/auth.service';
+import { logoutSuccess } from '@/slices/authSlice';
+import axios from 'axios';
 import { Bot, MessageSquare, Plus, Settings, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 
 const recentSessions = [
     { title: 'Senior Java Developer Interview', time: 'Hoje, 14:30', active: true },
@@ -10,6 +16,21 @@ const recentSessions = [
 ];
 
 export default function Sidebar() {
+
+    const dispatch = useDispatch();
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        try {
+            await authService.logout();
+        } catch (error) {
+            console.error('Erro ao encerrar sessão no servidor:', error);
+        } finally {
+            dispatch(logoutSuccess());
+            router.push('/login');
+        }
+    }
+
     return (
         <aside className="flex h-full w-72 flex-col border-r border-slate-900 bg-slate-950 p-4 text-white">
             <div className="flex items-center justify-between pb-6">
@@ -46,7 +67,7 @@ export default function Sidebar() {
                         <span className="truncate text-xs text-slate-500">joao@email.com</span>
                     </div>
                     <button className="text-slate-600 hover:text-white"><Settings className="h-4 w-4" /></button>
-                    <button className="text-slate-600 hover:text-red-400"><LogOut className="h-4 w-4" /></button>
+                    <button onClick={handleLogout} className="text-slate-600 cursor-pointer hover:text-red-400"><LogOut className="h-4 w-4" /></button>
                 </div>
             </div>
         </aside>
