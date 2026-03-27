@@ -4,10 +4,12 @@ import { authService } from '@/services/auth.service';
 import { chatService, ChatType } from '@/services/chat.service';
 import { logoutSuccess } from '@/slices/authSlice';
 import { RootState } from '@/store/store';
+import { CreateChatFormData } from '@/validations/chat.schema';
 import { MessageSquare, Plus, Settings, LogOut, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import NewChatModal from './NewChatModal';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -23,28 +25,8 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
     const dispatch = useDispatch();
     const router = useRouter();
     const { user } = useSelector((state: RootState) => state.auth);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
-
-    const handleCreateNewChat = async () => {
-        try {
-            setIsCreating(true);
-
-            const novaSessao = await chatService.createSession({
-                title: 'Entrevista Front-end - App Financeiro',
-                type: ChatType.TECH_INTERVIEW,
-                tags: ['react', 'nextjs', 'typescript', 'cybersecurity']
-            });
-
-            router.push(`/chat/${novaSessao.id}`);
-
-            if (window.innerWidth < 1024) onToggle();
-
-        } catch (error) {
-            console.error('Erro ao criar a sessão de chat:', error);
-        } finally {
-            setIsCreating(false);
-        }
-    };
 
     const handleLogout = async () => {
         try {
@@ -63,6 +45,28 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         if (names.length === 1) return names[0].charAt(0).toUpperCase();
         return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
     };
+
+    const handleCreateSection = async (data: CreateChatFormData) => {
+        try {
+            const novaSessao = await chatService.createSession({
+                title: data.title,
+                type: data.type,
+                tags: data.tags
+            });
+
+            setIsModalOpen(false);
+
+            router.push(`/chat/${novaSessao.id}`);
+
+            if (isOpen) {
+                onToggle();
+            }
+
+        } catch (error) {
+            console.error('Erro ao criar a sessão de chat:', error);
+            throw error;
+        }
+    }
 
     return (
         <>
@@ -91,11 +95,10 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
                 <div className="px-4">
                     <button
-                        onClick={handleCreateNewChat}
-                        disabled={isCreating}
-                        className={`flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-70 ${isOpen ? 'px-4' : 'px-0'}`}
+                        onClick={() => setIsModalOpen(true)}
+                        className={`cursor-pointer flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 ${isOpen ? 'px-4' : 'px-0'}`}
                     >
-                        {isCreating ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Plus className="h-5 w-5 shrink-0" />}
+                        <Plus className="h-5 w-5 shrink-0" />
                         {isOpen && <span>Nova Entrevista</span>}
                     </button>
                 </div>
@@ -141,6 +144,11 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     </div>
                 </div>
             </aside>
+            <NewChatModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleCreateSection}
+            />
         </>
     );
 }
