@@ -1,13 +1,13 @@
 "use client";
 
 import { authService } from '@/services/auth.service';
-import { chatService, ChatType } from '@/services/chat.service';
+import { chatService, ChatSession, ChatType } from '@/services/chat.service';
 import { logoutSuccess } from '@/slices/authSlice';
 import { RootState } from '@/store/store';
 import { CreateChatFormData } from '@/validations/chat.schema';
 import { MessageSquare, Plus, Settings, LogOut, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import NewChatModal from './NewChatModal';
 
@@ -16,17 +16,30 @@ interface SidebarProps {
     onToggle: () => void;
 }
 
-const recentSessions = [
-    { title: 'Senior Java Developer Interview', time: 'Hoje, 14:30', active: true },
-    { title: 'React Frontend Interview', time: 'Ontem, 10:00' },
-];
-
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
     const dispatch = useDispatch();
+    const params = useParams();
+    const currentChatId = params?.id as string;
     const router = useRouter();
     const { user } = useSelector((state: RootState) => state.auth);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isCreating, setIsCreating] = useState(false);
+    const [sessions, setSessions] = useState<ChatSession[]>([]);
+    const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+
+    useEffect(() => {
+        const fetchSessions = async () => {
+            try {
+                const data = await chatService.getAllChats();
+                setSessions(data);
+            } catch (error) {
+                console.error('Erro ao buscar sessões:', error);
+            } finally {
+                setIsLoadingSessions(false);
+            }
+        }
+
+        fetchSessions();
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -54,6 +67,8 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 tags: data.tags
             });
 
+            setSessions((prev) => [novaSessao, ...prev]);
+
             setIsModalOpen(false);
 
             router.push(`/chat/${novaSessao.id}`);
@@ -67,6 +82,13 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             throw error;
         }
     }
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('pt-BR', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+        }).format(date);
+    };
 
     return (
         <>
@@ -103,19 +125,40 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     </button>
                 </div>
 
-                <div className="flex-grow space-y-1 overflow-y-auto pt-8 px-4">
+               <div className="flex-grow space-y-1 overflow-y-auto pt-8 px-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-800 hover:[&::-webkit-scrollbar-thumb]:bg-slate-700">
                     {isOpen && <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600">Sessões Recentes</h2>}
-                    {recentSessions.map((session, index) => (
-                        <div key={index} className={`flex cursor-pointer items-center rounded-lg py-2 transition-colors ${isOpen ? 'gap-3 px-3' : 'justify-center px-0'} ${session.active ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-900/50 hover:text-white'}`} title={session.title}>
-                            <MessageSquare className={`h-4 w-4 shrink-0 ${session.active ? 'text-indigo-400' : 'text-slate-600'}`} />
-                            {isOpen && (
-                                <div className="flex flex-col overflow-hidden">
-                                    <span className="truncate text-sm font-bold">{session.title}</span>
-                                    <span className="text-xs text-slate-600">{session.time}</span>
-                                </div>
-                            )}
+                    {isLoadingSessions ? (
+                        <div className="flex justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
                         </div>
-                    ))}
+                    ) : sessions.length === 0 ? (
+                        isOpen && <p className="text-center text-xs text-slate-600 py-4">Nenhuma entrevista criada.</p>
+                    ) : sessions.map((session) => {
+                            const isActive = session.id === currentChatId;
+
+                            return (
+                                <div 
+                                    key={session.id} 
+                                    onClick={() => router.push(`/chat/${session.id}`)}
+                                    className={`flex cursor-pointer items-center rounded-lg py-2 transition-colors ${
+                                        isOpen ? 'gap-3 px-3' : 'justify-center px-0'
+                                    } ${
+                                        isActive 
+                                            ? 'bg-slate-900 text-white' 
+                                            : 'text-slate-400 hover:bg-slate-900/50 hover:text-white'
+                                    }`} 
+                                    title={session.title}
+                                >
+                                    <MessageSquare className={`h-4 w-4 shrink-0 ${isActive ? 'text-indigo-400' : 'text-slate-600'}`} />
+                                    {isOpen && (
+                                        <div className="flex flex-col overflow-hidden">
+                                            <span className="truncate text-sm font-bold">{session.title}</span>
+                                            <span className="text-xs text-slate-600">{formatDate(session.createdAt)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                 </div>
 
                 <div className="border-t border-slate-900 p-4 mt-auto">

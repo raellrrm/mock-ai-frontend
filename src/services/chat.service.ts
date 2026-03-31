@@ -49,6 +49,11 @@ export const chatService = {
         return response.data;
     },
 
+    async getAllChats(): Promise<ChatSession[]> {
+        const response = await api.get<ChatSession[]>('/chats');
+        return response.data;
+    },
+
     async sendMessage(payload: SendMessagePayload): Promise<Message> {
 
         let response;
