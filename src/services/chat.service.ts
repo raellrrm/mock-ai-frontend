@@ -8,6 +8,11 @@ export interface SendMessagePayload {
     audioBlob?: Blob;
 }
 
+export interface AudioResponsePayload {
+    userMessage: Message;
+    aiMessage: Message;
+}
+
 export interface AiResponse {
     content: string;
     audioUrl?: string;
@@ -34,6 +39,21 @@ export enum ChatType {
 
 
 export const chatService = {
+
+    async sendAudioMessage(chatId: string, audioBlob: Blob): Promise<AudioResponsePayload> {
+        const formData = new FormData();
+
+        formData.append('file', audioBlob, 'recording.webm');
+
+        const response = await api.post<AudioResponsePayload>(`/messages/chat/${chatId}/audio`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        return response.data;
+    },
+
     async createSession(data: CreateChatPayload): Promise<ChatSession> {
         const response = await api.post<ChatSession>('/chats', data);
         return response.data;
@@ -52,7 +72,7 @@ export const chatService = {
     async getAllChats(): Promise<ChatSession[]> {
         const response = await api.get<ChatSession[]>('/chats');
         return response.data;
-    },
+    },  
 
     async sendMessage(payload: SendMessagePayload): Promise<Message> {
 

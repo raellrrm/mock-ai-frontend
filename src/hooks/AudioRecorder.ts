@@ -4,6 +4,8 @@ export function useAudioRecorder() {
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+    
+    const [error, setError] = useState<string | null>(null);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -11,6 +13,12 @@ export function useAudioRecorder() {
 
     const startRecording = useCallback(async () => {
         try {
+            setError(null); 
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Navegador não suporta gravação de áudio.');
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const mediaRecorder = new MediaRecorder(stream);
 
@@ -30,9 +38,16 @@ export function useAudioRecorder() {
                 setRecordingTime((prev) => prev + 1);
             }, 1000);
 
-        } catch (error) {
-            console.error('Erro de permissão do microfone:', error);
-            throw new Error('Permissão de microfone negada ou dispositivo não encontrado.');
+        } catch (err: any) {
+            console.error('Falha ao iniciar microfone:', err);
+            
+            if (err.name === 'NotFoundError') {
+                setError('Nenhum microfone foi encontrado no seu dispositivo.');
+            } else if (err.name === 'NotAllowedError') {
+                setError('Permissão negada. Libere o acesso ao microfone no navegador.');
+            } else {
+                setError(err.message || 'Erro desconhecido ao acessar o microfone.');
+            }
         }
     }, []);
 
@@ -44,7 +59,6 @@ export function useAudioRecorder() {
             }
 
             mediaRecorderRef.current.onstop = () => {
-                // Pega as faixas de áudio e desliga o hardware (apaga a luz vermelha da webcam)
                 mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
 
                 const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
@@ -75,6 +89,7 @@ export function useAudioRecorder() {
         isRecording,
         recordingTime,
         audioBlob,
+        error, 
         startRecording,
         stopRecording,
         cancelRecording,

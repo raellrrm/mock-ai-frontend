@@ -37,7 +37,7 @@ export default function ChatPage() {
         ]);
 
 
-        if(sessionData?.title) {
+        if (sessionData?.title) {
           setChatTitle(sessionData.title);
         }
 
@@ -58,27 +58,32 @@ export default function ChatPage() {
   }, [sessionId, router]);
 
   const handleSendMessage = async (content: string, type: 'text' | 'audio', audioBlob?: Blob) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    const tempMessageId = `temp_${Date.now}`;
+
+    const tempUserMessage: Message = {
+      id: tempMessageId,
       role: 'user',
       type,
-      content,
+      content: type === 'audio' ? 'A transcrever áudio...' : content,
       audioUrl: type === 'audio' && audioBlob ? URL.createObjectURL(audioBlob) : undefined,
       createdAt: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, tempUserMessage]);
     setIsAiTyping(true);
 
     try {
-      const aiResponse = await chatService.sendMessage({
-        sessionId: sessionId,
-        content,
-        type,
-        audioBlob,
-      });
+      if (type === 'audio' && audioBlob) {
+        const { userMessage, aiMessage } = await chatService.sendAudioMessage(sessionId, audioBlob);
 
-      setMessages((prev) => [...prev, aiResponse]);
+        setMessages((prev) => {
+          const historicoSemTemp = prev.filter((msg) => msg.id !== tempMessageId);
+
+          return [...historicoSemTemp, userMessage, aiMessage];
+        });
+      } else {
+        console.log("Envio de texto ainda não implementado no back-end.");
+      }
     } catch (error) {
       console.error('Erro ao comunicar com a IA:', error);
     } finally {
